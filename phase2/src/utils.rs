@@ -8,8 +8,8 @@ use byteorder::{
 };
 use num_bigint::BigUint;
 use num_traits::Num;
-use std::sync::Arc;
-use bellman_ce::pairing::{
+use std::{sync::Arc, fmt};
+use bellman_ce::{pairing::{
     ff::{
         PrimeField,
     },
@@ -22,7 +22,7 @@ use bellman_ce::pairing::{
         G2Affine,
         Fq12,
     }
-};
+}, get_chunk_size, SynthesisError};
 use rand::{
     Rng,
     Rand,
@@ -63,7 +63,7 @@ pub fn merge_pairs<G: CurveAffine>(v1: &[G], v2: &[G]) -> (G, G)
 
     assert_eq!(v1.len(), v2.len());
 
-    let chunk = (v1.len() / num_cpus::get()) + 1;
+    let chunk = get_chunk_size(v1.len());
 
     let s = Arc::new(Mutex::new(G::Projective::zero()));
     let sx = Arc::new(Mutex::new(G::Projective::zero()));
@@ -182,4 +182,33 @@ pub fn pairing_to_vec(p: &Fq12) -> Vec<Vec<Vec<String>>> {
             ]
         ],
     ]
+}
+
+#[derive(Debug)]
+pub enum Phase2Error {
+    InvalidContribution(String),
+    SynthesisError(SynthesisError),
+    IoError(std::io::Error),
+}
+
+impl fmt::Display for Phase2Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Phase2Error::InvalidContribution(e) => write!(f, "Invalid contribution: {:?}", e),
+            Phase2Error::SynthesisError(e) => write!(f, "Synthesis error: {:?}", e),
+            Phase2Error::IoError(e) => write!(f, "IO error: {:?}", e),
+        }
+    }
+}
+
+impl From<SynthesisError> for Phase2Error {
+    fn from(e: SynthesisError) -> Phase2Error {
+        Phase2Error::SynthesisError(e)
+    }
+}
+
+impl From<std::io::Error> for Phase2Error {
+    fn from(e: std::io::Error) -> Phase2Error {
+        Phase2Error::IoError(e)
+    }
 }

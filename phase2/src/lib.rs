@@ -6,7 +6,6 @@ extern crate bellman_ce;
 extern crate rand;
 extern crate byteorder;
 extern crate blake2_rfc;
-extern crate num_cpus;
 extern crate crossbeam;
 extern crate num_bigint;
 extern crate num_traits;
@@ -22,6 +21,7 @@ pub mod hash_writer;
 pub mod parameters;
 pub mod utils;
 pub mod circom_circuit;
+pub mod phase2;
 
 cfg_if! {
     if #[cfg(feature = "wasm")] {

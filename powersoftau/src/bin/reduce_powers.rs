@@ -31,8 +31,9 @@ fn main() {
     let reduced_circuit_power = args[4].parse().expect("could not parse reduced circuit power");
     let batch_size = args[5].parse().expect("could not parse batch size");
 
-    let parameters = CeremonyParams::<Bn256>::new(reduced_circuit_power, batch_size);
-
+    let parameters = CeremonyParams::<Bn256>::new(original_circuit_power, batch_size);
+    let reduced_parameters = CeremonyParams::<Bn256>::new(reduced_circuit_power, batch_size);
+    
     // Try to load the challenge from disk.
     let reader = OpenOptions::new()
         .read(true)
@@ -49,18 +50,19 @@ fn main() {
         CheckForCorrectness::Yes,
         UseCompression::No,
         &parameters,
+        Some(&reduced_parameters),
     )
     .expect("unable to read compressed accumulator");
 
-    let mut reduced_accumulator = BatchedAccumulator::empty(&parameters);
+    let mut reduced_accumulator = BatchedAccumulator::empty(&reduced_parameters);
     reduced_accumulator.tau_powers_g1 =
-        current_accumulator.tau_powers_g1[..parameters.powers_g1_length].to_vec();
+        current_accumulator.tau_powers_g1[..reduced_parameters.powers_g1_length].to_vec();
     reduced_accumulator.tau_powers_g2 =
-        current_accumulator.tau_powers_g2[..parameters.powers_length].to_vec();
+        current_accumulator.tau_powers_g2[..reduced_parameters.powers_length].to_vec();
     reduced_accumulator.alpha_tau_powers_g1 =
-        current_accumulator.alpha_tau_powers_g1[..parameters.powers_length].to_vec();
+        current_accumulator.alpha_tau_powers_g1[..reduced_parameters.powers_length].to_vec();
     reduced_accumulator.beta_tau_powers_g1 =
-        current_accumulator.beta_tau_powers_g1[..parameters.powers_length].to_vec();
+        current_accumulator.beta_tau_powers_g1[..reduced_parameters.powers_length].to_vec();
     reduced_accumulator.beta_g2 = current_accumulator.beta_g2;
 
     let writer = OpenOptions::new()
@@ -72,7 +74,7 @@ fn main() {
 
     // Recomputation stips the public key and uses hashing to link with the previous contibution after decompression
     writer
-        .set_len(parameters.accumulator_size as u64)
+        .set_len(reduced_parameters.accumulator_size as u64)
         .expect("must make output file large enough");
 
     let mut writable_map = unsafe {
@@ -82,8 +84,8 @@ fn main() {
     };
 
     let hash = reduced_hash(
-        original_circuit_power,
-        parameters.size as u8,
+        original_circuit_power as u8,
+        reduced_parameters.size as u8,
     );
     (&mut writable_map[0..])
         .write_all(hash.as_slice())
@@ -105,7 +107,7 @@ fn main() {
     }
 
     reduced_accumulator
-        .serialize(&mut writable_map, UseCompression::No, &parameters)
+        .serialize(&mut writable_map, UseCompression::No, &reduced_parameters)
         .unwrap();
 
     // Get the hash of the contribution, so the user can compare later

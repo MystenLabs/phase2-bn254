@@ -26,6 +26,15 @@ mod multiexp;
 #[cfg(test)]
 mod tests;
 
+/// Return chunk size for each thread given the total size to process.
+pub fn get_chunk_size(total: usize) -> usize {
+    if total == 0 {
+        0
+    } else {
+        (total - 1) / num_cpus::get() + 1
+    }
+}
+
 cfg_if! {
     if #[cfg(feature = "multicore")] {
         #[cfg(feature = "wasm")]
